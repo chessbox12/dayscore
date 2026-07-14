@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --ink: #1c2430;
+  --ink-2: #55606e;
+  --ink-3: #8a93a0;
+  --line: #e4e7ec;
+  --line-rgb: 228 231 236; /* channels for Tailwind alpha (bg-line/40 etc.) */
+  --accent: #2565ad;
+  --accent-ink: #ffffff;
+  --accent-soft: #e5eef8;
+  --danger: #b3403a;
+  --danger-rgb: 179 64 58;
+
+  /* One hue, ten steps: light → deep blue. Score = intensity, nothing else. */
+  --score-1: #dce9f7; --score-2: #c9ddf1; --score-3: #b4d0ea; --score-4: #9cc1e2;
+  --score-5: #82b0d9; --score-6: #679dce; --score-7: #4c88c0; --score-8: #356fae;
+  --score-9: #235898; --score-10: #16406f;
+
+  --score-ink-1: #1c2430; --score-ink-2: #1c2430; --score-ink-3: #1c2430;
+  --score-ink-4: #1c2430; --score-ink-5: #1c2430; --score-ink-6: #1c2430;
+  --score-ink-7: #ffffff; --score-ink-8: #ffffff; --score-ink-9: #ffffff; --score-ink-10: #ffffff;
+}
+
+.dark {
+  --bg: #12151c;
+  --surface: #1a1e27;
+  --ink: #f2f3f5;
+  --ink-2: #aeb3bd;
+  --ink-3: #767c87;
+  --line: #272c37;
+  --line-rgb: 39 44 55;
+  --accent: #7fb0e8;
+  --accent-ink: #0f1420;
+  --accent-soft: #1e2a3c;
+  --danger: #e0736d;
+  --danger-rgb: 224 115 109;
+
+  /* Same ramp, flipped for dark: intensity rises with brightness. */
+  --score-1: #243247; --score-2: #2a3c58; --score-3: #314769; --score-4: #39537b;
+  --score-5: #42608e; --score-6: #4d70a4; --score-7: #5b83ba; --score-8: #7099cd;
+  --score-9: #8db3e0; --score-10: #b0cdf1;
+
+  --score-ink-1: #e9eef6; --score-ink-2: #e9eef6; --score-ink-3: #e9eef6;
+  --score-ink-4: #e9eef6; --score-ink-5: #e9eef6; --score-ink-6: #e9eef6;
+  --score-ink-7: #101724; --score-ink-8: #101724; --score-ink-9: #101724; --score-ink-10: #101724;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  @apply bg-bg text-ink font-sans antialiased;
+  overscroll-behavior-y: none;
+}
+
+/* Visible, consistent focus for keyboard users. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Respect reduced motion globally. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Hairline separators that don't read as cards. */
+.hairline-t {
+  border-top: 1px solid var(--line);
+}
