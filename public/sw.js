@@ -1,6 +1,7 @@
 /* DayScore service worker: cache the app shell so the PWA opens offline. */
-const CACHE = "dayscore-v1";
-const SHELL = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg"];
+const CACHE = "dayscore-v2";
+// Relative to the SW script URL, so the app works from any base path.
+const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -32,10 +33,10 @@ self.addEventListener("fetch", (event) => {
       fetch(request)
         .then((res) => {
           const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put("/index.html", copy));
+          caches.open(CACHE).then((c) => c.put("./index.html", copy));
           return res;
         })
-        .catch(() => caches.match("/index.html"))
+        .catch(() => caches.match("./index.html"))
     );
     return;
   }
@@ -62,7 +63,7 @@ self.addEventListener("notificationclick", (event) => {
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
       const open = clients.find((c) => "focus" in c);
       if (open) return open.focus();
-      return self.clients.openWindow("/");
+      return self.clients.openWindow("./");
     })
   );
 });
