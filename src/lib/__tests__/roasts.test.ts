@@ -28,9 +28,24 @@ describe("roasts", () => {
     let d = "2026-01-01";
     for (let i = 0; i < 120; i++) {
       const q8 = roastFor(d, 8);
-      eq(`no 10-only line for an 8 (${d})`, q8.includes("Nobody's day is a ten"), false);
-      eq(`no 9-only line for an 8 (${d})`, q8.includes("In this economy"), false);
+      eq(`no 10-only line for an 8 (${d})`, q8.includes("Nobody's day is a 10"), false);
+      eq(`no 9-only line for an 8 (${d})`, q8.includes("What was missing"), false);
       d = addDays(d, 1);
+    }
+  });
+
+  it("spin serves a fresh quote for the same entry, deterministically", () => {
+    const base = roastFor("2026-07-15", 3);
+    eq("spin 1 differs from base", roastFor("2026-07-15", 3, 1) === base, false);
+    eq("same spin, same quote", roastFor("2026-07-15", 3, 1), roastFor("2026-07-15", 3, 1));
+  });
+
+  it("every quote mentions the score it was given", () => {
+    for (let s = 1; s <= 10; s++) {
+      for (let spin = 0; spin < 20; spin++) {
+        const q = roastFor("2026-07-15", s, spin);
+        eq(`score ${s} spin ${spin} names the number`, q.includes(String(s)), true);
+      }
     }
   });
 

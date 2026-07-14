@@ -9,8 +9,13 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   </React.StrictMode>
 );
 
-// PWA: cache the app shell for offline use (production only).
-if (import.meta.env.PROD && "serviceWorker" in navigator) {
+// PWA: cache the app shell for offline use (production only). Skipped inside
+// the Chrome extension, where the popup is already local.
+if (
+  import.meta.env.PROD &&
+  "serviceWorker" in navigator &&
+  location.protocol !== "chrome-extension:"
+) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
       /* offline caching is progressive enhancement */

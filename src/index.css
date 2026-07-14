@@ -82,3 +82,24 @@ body {
 .hairline-t {
   border-top: 1px solid var(--line);
 }
+
+/* Mascot: the raised arm waves. fill-box puts the origin at the arm's own
+   bounding box, so it pivots near the shoulder instead of the SVG corner. */
+.cat-wave-arm {
+  transform-box: fill-box;
+  transform-origin: 88% 82%;
+  animation: cat-wave 1.8s ease-in-out infinite;
+}
+@keyframes cat-wave {
+  0%, 100% { transform: rotate(0deg); }
+  30% { transform: rotate(16deg); }
+  55% { transform: rotate(-6deg); }
+  75% { transform: rotate(10deg); }
+}
+
+/* Chrome-extension popup: popups size to their content, so pin real
+   dimensions. theme-init.js adds .ext when running as an extension. */
+html.ext body {
+  width: 400px;
+  min-height: 540px;
+}

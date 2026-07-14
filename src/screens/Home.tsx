@@ -4,9 +4,10 @@
  */
 import { useMemo, useState } from "react";
 import { Button } from "../components/Button";
+import { CatAvatar } from "../components/CatAvatar";
 import { EntrySheet } from "../components/EntrySheet";
 import { Heatmap, HeatmapLegend } from "../components/Heatmap";
-import { ChevronLeftIcon, ChevronRightIcon, GearIcon } from "../components/Icons";
+import { ChevronLeftIcon, ChevronRightIcon, GearIcon, RefreshIcon } from "../components/Icons";
 import { ScorePicker } from "../components/ScorePicker";
 import { addMonths, formatHuman, formatMonthTitle, ISODate, monthOf } from "../lib/dates";
 import { Route } from "../lib/router";
@@ -25,6 +26,7 @@ export function HomeScreen({ navigate }: { navigate: (r: Route) => void }) {
   const [view, setView] = useState<{ y: number; m: number }>(current);
   const [pickedScore, setPickedScore] = useState<number | null>(null);
   const [sheetDate, setSheetDate] = useState<ISODate | null>(null);
+  const [roastSpin, setRoastSpin] = useState(0);
 
   const todayEntry = entries[today];
   const isCurrentMonth = view.y === current.y && view.m === current.m;
@@ -53,11 +55,14 @@ export function HomeScreen({ navigate }: { navigate: (r: Route) => void }) {
   return (
     <div className="space-y-8">
       <header className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[14px] font-medium text-ink-2">{formatHuman(today)}</p>
-          <h1 className="text-[24px] font-semibold tracking-tight mt-0.5">
-            {todayEntry ? "Today, rated." : "How was your day?"}
-          </h1>
+        <div className="flex items-center gap-3 min-w-0">
+          <CatAvatar size={64} />
+          <div className="min-w-0">
+            <p className="text-[14px] font-medium text-ink-2">{formatHuman(today)}</p>
+            <h1 className="text-[24px] font-semibold tracking-tight mt-0.5">
+              {todayEntry ? "Today, rated." : "How was your day?"}
+            </h1>
+          </div>
         </div>
         <button
           type="button"
@@ -81,12 +86,23 @@ export function HomeScreen({ navigate }: { navigate: (r: Route) => void }) {
             {todayEntry.score}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[15px] leading-snug">“{roastFor(today, todayEntry.score)}”</p>
+            <p className="text-[15px] leading-snug" aria-live="polite">
+              “{roastFor(today, todayEntry.score, roastSpin)}”
+            </p>
             <p className="text-[13px] text-ink-3 mt-1">
               {todayEntry.score} — {SCORE_LABELS[todayEntry.score]}
               {todayEntry.note ? " · has note" : ""}
             </p>
           </div>
+          <button
+            type="button"
+            aria-label="New roast"
+            title="New roast"
+            onClick={() => setRoastSpin((n) => n + 1)}
+            className="w-10 h-10 shrink-0 inline-flex items-center justify-center rounded-xl text-ink-3 hover:text-ink hover:bg-line/40"
+          >
+            <RefreshIcon size={16} />
+          </button>
           <Button variant="ghost" className="h-10 px-3 text-[13px] shrink-0" onClick={() => setSheetDate(today)}>
             Edit
           </Button>

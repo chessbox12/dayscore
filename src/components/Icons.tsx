@@ -52,6 +52,13 @@ export const DownloadIcon = (p: P) => (
   </Base>
 );
 
+export const RefreshIcon = (p: P) => (
+  <Base {...p}>
+    <path d="M19 12a7 7 0 1 1-2.05-4.95L19.5 9.5" />
+    <path d="M19.5 4.5v5h-5" />
+  </Base>
+);
+
 export const TrashIcon = (p: P) => (
   <Base {...p}>
     <path d="M4.5 6.5h15M9.5 6V4.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V6M7 6.5l.8 12.2a2 2 0 0 0 2 1.8h4.4a2 2 0 0 0 2-1.8L17 6.5" />
