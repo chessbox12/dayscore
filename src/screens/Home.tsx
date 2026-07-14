@@ -10,6 +10,7 @@ import { ChevronLeftIcon, ChevronRightIcon, GearIcon } from "../components/Icons
 import { ScorePicker } from "../components/ScorePicker";
 import { addMonths, formatHuman, formatMonthTitle, ISODate, monthOf } from "../lib/dates";
 import { Route } from "../lib/router";
+import { roastFor } from "../lib/roasts";
 import { SCORE_LABELS } from "../lib/score";
 import { currentStreak, monthlyAverage } from "../lib/stats";
 import { useApp } from "../state/store";
@@ -80,8 +81,11 @@ export function HomeScreen({ navigate }: { navigate: (r: Route) => void }) {
             {todayEntry.score}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[15px] font-medium">{SCORE_LABELS[todayEntry.score]}</p>
-            {todayEntry.note && <p className="text-[13px] text-ink-3 truncate mt-0.5">{todayEntry.note}</p>}
+            <p className="text-[15px] leading-snug">“{roastFor(today, todayEntry.score)}”</p>
+            <p className="text-[13px] text-ink-3 mt-1">
+              {todayEntry.score} — {SCORE_LABELS[todayEntry.score]}
+              {todayEntry.note ? " · has note" : ""}
+            </p>
           </div>
           <Button variant="ghost" className="h-10 px-3 text-[13px] shrink-0" onClick={() => setSheetDate(today)}>
             Edit
