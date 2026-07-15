@@ -5,6 +5,7 @@
 import { useMemo, useState } from "react";
 import { Button } from "../components/Button";
 import { CatAvatar } from "../components/CatAvatar";
+import { CatRunner } from "../components/CatRunner";
 import { EntrySheet } from "../components/EntrySheet";
 import { Heatmap, HeatmapLegend, YearHeatmap } from "../components/Heatmap";
 import { ChevronLeftIcon, ChevronRightIcon, GearIcon, RefreshIcon } from "../components/Icons";
@@ -28,6 +29,7 @@ export function HomeScreen({ navigate }: { navigate: (r: Route) => void }) {
   const [sheetDate, setSheetDate] = useState<ISODate | null>(null);
   const [roastSpin, setRoastSpin] = useState(0);
   const [calView, setCalView] = useState<"month" | "year">("month");
+  const [showGame, setShowGame] = useState(false);
 
   const todayEntry = entries[today];
   const isCurrentMonth = view.y === current.y && view.m === current.m;
@@ -61,7 +63,15 @@ export function HomeScreen({ navigate }: { navigate: (r: Route) => void }) {
     <div className="space-y-8">
       <header className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <CatAvatar size={64} />
+          <button
+            type="button"
+            aria-label="Play Cat Run"
+            title="Psst. Click me."
+            onClick={() => setShowGame(true)}
+            className="shrink-0 rounded-2xl -m-1 p-1 hover:bg-line/40 active:scale-95 transition-transform"
+          >
+            <CatAvatar size={64} />
+          </button>
           <div className="min-w-0">
             <p className="text-[14px] font-medium text-ink-2">{formatHuman(today)}</p>
             <h1 className="text-[24px] font-semibold tracking-tight mt-0.5">
@@ -205,6 +215,7 @@ export function HomeScreen({ navigate }: { navigate: (r: Route) => void }) {
       </section>
 
       <EntrySheet date={sheetDate} onClose={() => setSheetDate(null)} />
+      {showGame && <CatRunner onClose={() => setShowGame(false)} />}
     </div>
   );
 }
