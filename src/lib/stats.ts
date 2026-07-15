@@ -27,6 +27,19 @@ export function monthlyAverage(scores: ScoreByDate, y: number, m: number): Range
   return { average: count === 0 ? null : sum / count, count };
 }
 
+export function yearlyAverage(scores: ScoreByDate, y: number): RangeAverage {
+  const prefix = `${String(y).padStart(4, "0")}-`;
+  let sum = 0;
+  let count = 0;
+  for (const [date, s] of Object.entries(scores)) {
+    if (date.startsWith(prefix)) {
+      sum += s;
+      count++;
+    }
+  }
+  return { average: count === 0 ? null : sum / count, count };
+}
+
 /**
  * Forgiving current streak: today does not break the streak until the day has
  * fully ended. If today is logged, count back from today; otherwise count back

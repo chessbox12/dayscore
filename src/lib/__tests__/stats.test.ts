@@ -1,9 +1,23 @@
 import { describe, it } from "vitest";
-import { currentStreak, monthlyAverage, totalLogged } from "../stats";
+import { currentStreak, monthlyAverage, totalLogged, yearlyAverage } from "../stats";
 import { eq, scoresFrom } from "./helpers";
 
 // Reference day: Tuesday 2026-07-14.
 const TODAY = "2026-07-14";
+
+describe("yearly averages", () => {
+  it("keeps entries in their own year and averages across months", () => {
+    const s = scoresFrom([
+      ["2025-12-31", 2],
+      ["2026-01-01", 4],
+      ["2026-07-14", 8],
+    ]);
+    eq("2025 avg", yearlyAverage(s, 2025).average, 2);
+    eq("2026 avg", yearlyAverage(s, 2026).average, 6);
+    eq("2026 count", yearlyAverage(s, 2026).count, 2);
+    eq("empty year", yearlyAverage(s, 2024).average, null);
+  });
+});
 
 describe("monthly averages", () => {
   it("keeps entries in their own month", () => {

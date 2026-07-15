@@ -6,14 +6,14 @@ import { useMemo, useState } from "react";
 import { Button } from "../components/Button";
 import { CatAvatar } from "../components/CatAvatar";
 import { EntrySheet } from "../components/EntrySheet";
-import { Heatmap, HeatmapLegend } from "../components/Heatmap";
+import { Heatmap, HeatmapLegend, YearHeatmap } from "../components/Heatmap";
 import { ChevronLeftIcon, ChevronRightIcon, GearIcon, RefreshIcon } from "../components/Icons";
 import { ScorePicker } from "../components/ScorePicker";
 import { addMonths, formatHuman, formatMonthTitle, ISODate, monthOf } from "../lib/dates";
 import { Route } from "../lib/router";
 import { roastFor } from "../lib/roasts";
 import { SCORE_LABELS } from "../lib/score";
-import { currentStreak, monthlyAverage } from "../lib/stats";
+import { currentStreak, monthlyAverage, yearlyAverage } from "../lib/stats";
 import { useApp } from "../state/store";
 import { useToast } from "../components/Toast";
 
@@ -27,11 +27,16 @@ export function HomeScreen({ navigate }: { navigate: (r: Route) => void }) {
   const [pickedScore, setPickedScore] = useState<number | null>(null);
   const [sheetDate, setSheetDate] = useState<ISODate | null>(null);
   const [roastSpin, setRoastSpin] = useState(0);
+  const [calView, setCalView] = useState<"month" | "year">("month");
 
   const todayEntry = entries[today];
   const isCurrentMonth = view.y === current.y && view.m === current.m;
+  const isCurrentYear = view.y === current.y;
+  const onCurrentPeriod = calView === "month" ? isCurrentMonth : isCurrentYear;
   const month = useMemo(() => monthlyAverage(scores, view.y, view.m), [scores, view]);
+  const year = useMemo(() => yearlyAverage(scores, view.y), [scores, view.y]);
   const streak = useMemo(() => currentStreak(scores, today), [scores, today]);
+  const period = calView === "month" ? month : year;
 
   const submit = () => {
     if (pickedScore === null) return;
@@ -118,25 +123,47 @@ export function HomeScreen({ navigate }: { navigate: (r: Route) => void }) {
 
       <section aria-label="Calendar" className="hairline-t pt-6 space-y-5">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-[15px] font-semibold tracking-tight">{formatMonthTitle(view.y, view.m)}</h2>
+          <h2 className="text-[15px] font-semibold tracking-tight tabular-nums">
+            {calView === "month" ? formatMonthTitle(view.y, view.m) : view.y}
+          </h2>
           <div className="flex items-center">
-            {!isCurrentMonth && (
+            <div role="radiogroup" aria-label="Calendar view" className="inline-flex rounded-lg bg-line/40 p-0.5 mr-1.5">
+              {(["month", "year"] as const).map((v) => (
+                <button
+                  key={v}
+                  role="radio"
+                  aria-checked={calView === v}
+                  type="button"
+                  onClick={() => setCalView(v)}
+                  className={`h-8 px-2.5 rounded-[7px] text-[12px] font-medium ${
+                    calView === v ? "bg-surface text-ink shadow-sm" : "text-ink-3 hover:text-ink"
+                  }`}
+                >
+                  {v === "month" ? "Month" : "Year"}
+                </button>
+              ))}
+            </div>
+            {!onCurrentPeriod && (
               <Button variant="ghost" className="h-10 px-3 text-[13px]" onClick={() => setView(current)}>
                 Today
               </Button>
             )}
             <button
               type="button"
-              aria-label="Previous month"
-              onClick={() => setView(addMonths(view.y, view.m, -1))}
+              aria-label={calView === "month" ? "Previous month" : "Previous year"}
+              onClick={() =>
+                setView(calView === "month" ? addMonths(view.y, view.m, -1) : { y: view.y - 1, m: view.m })
+              }
               className="w-10 h-10 inline-flex items-center justify-center rounded-xl text-ink-2 hover:text-ink hover:bg-line/40"
             >
               <ChevronLeftIcon size={18} />
             </button>
             <button
               type="button"
-              aria-label="Next month"
-              onClick={() => setView(addMonths(view.y, view.m, 1))}
+              aria-label={calView === "month" ? "Next month" : "Next year"}
+              onClick={() =>
+                setView(calView === "month" ? addMonths(view.y, view.m, 1) : { y: view.y + 1, m: view.m })
+              }
               className="w-10 h-10 inline-flex items-center justify-center rounded-xl text-ink-2 hover:text-ink hover:bg-line/40"
             >
               <ChevronRightIcon size={18} />
@@ -144,23 +171,36 @@ export function HomeScreen({ navigate }: { navigate: (r: Route) => void }) {
           </div>
         </div>
 
-        <Heatmap
-          y={view.y}
-          m={view.m}
-          scores={scores}
-          today={today}
-          weekStartsOn={settings.weekStartsOn}
-          onSelectDate={(d) => setSheetDate(d)}
-          selectedDate={sheetDate}
-        />
+        {calView === "month" ? (
+          <Heatmap
+            y={view.y}
+            m={view.m}
+            scores={scores}
+            today={today}
+            weekStartsOn={settings.weekStartsOn}
+            onSelectDate={(d) => setSheetDate(d)}
+            selectedDate={sheetDate}
+          />
+        ) : (
+          <YearHeatmap
+            y={view.y}
+            scores={scores}
+            today={today}
+            weekStartsOn={settings.weekStartsOn}
+            onSelectMonth={(m) => {
+              setView({ y: view.y, m });
+              setCalView("month");
+            }}
+          />
+        )}
 
         <HeatmapLegend />
 
         <p className="text-[13px] text-ink-3" aria-live="polite">
-          {month.count > 0
-            ? `${month.count} ${month.count === 1 ? "day" : "days"} logged · average ${month.average!.toFixed(1)}`
-            : "Nothing logged this month yet."}
-          {streak >= 2 && isCurrentMonth ? ` · ${streak}-day streak` : ""}
+          {period.count > 0
+            ? `${period.count} ${period.count === 1 ? "day" : "days"} logged · average ${period.average!.toFixed(1)}`
+            : `Nothing logged this ${calView} yet.`}
+          {streak >= 2 && onCurrentPeriod ? ` · ${streak}-day streak` : ""}
         </p>
       </section>
 

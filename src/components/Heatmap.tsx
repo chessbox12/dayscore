@@ -10,6 +10,7 @@ import {
   dayOfWeek,
   daysInMonth,
   formatHuman,
+  formatMonthTitle,
   ISODate,
   makeDate,
   WeekStart,
@@ -116,6 +117,66 @@ export function Heatmap({ y, m, scores, today, weekStartsOn, onSelectDate, selec
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Whole-year overview: 12 mini months on the same blue ramp. Day cells are
+ * presentation only at this size — each month is one button that drills back
+ * into the month view, which keeps the year glanceable and the tab order sane.
+ */
+export function YearHeatmap({
+  y,
+  scores,
+  today,
+  weekStartsOn,
+  onSelectMonth,
+}: {
+  y: number;
+  scores: Record<ISODate, number>;
+  today: ISODate;
+  weekStartsOn: WeekStart;
+  onSelectMonth: (m: number) => void;
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-x-4 gap-y-5">
+      {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
+        const first = makeDate(y, m, 1);
+        const leading = (dayOfWeek(first) - weekStartsOn + 7) % 7;
+        const dates = Array.from({ length: daysInMonth(y, m) }, (_, i) => makeDate(y, m, i + 1));
+        const logged = dates.filter((d) => scores[d] !== undefined).length;
+        return (
+          <button
+            key={m}
+            type="button"
+            onClick={() => onSelectMonth(m)}
+            aria-label={`${formatMonthTitle(y, m)} — ${logged} ${logged === 1 ? "day" : "days"} logged. Open month view.`}
+            className="group flex flex-col text-left rounded-lg -m-1 p-1 hover:bg-line/30"
+          >
+            <p className="text-[11px] font-medium text-ink-2 group-hover:text-ink mb-1.5">
+              {formatHuman(first, { month: "short" })}
+            </p>
+            <div className="grid grid-cols-7 gap-[2px]" aria-hidden="true">
+              {Array.from({ length: leading }, (_, i) => (
+                <div key={`lead-${i}`} />
+              ))}
+              {dates.map((date) => {
+                const score = scores[date];
+                return (
+                  <div
+                    key={date}
+                    style={score !== undefined ? { background: `var(--score-${score})` } : undefined}
+                    className={`aspect-square rounded-[2px] ${
+                      score !== undefined ? "" : date > today ? "bg-line/35" : "bg-line/70"
+                    } ${date === today ? "ring-1 ring-accent" : ""}`}
+                  />
+                );
+              })}
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }
