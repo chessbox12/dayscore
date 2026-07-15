@@ -83,17 +83,82 @@ body {
   border-top: 1px solid var(--line);
 }
 
-/* Cat Run: obstacle stacks reuse the heatmap-square look. */
-.runner-obstacle {
+/* Cat Run: obstacle stacks reuse the heatmap-square look. The outer node
+   carries the per-frame translateX; inner layers own their own animations
+   (hover bob, pop) so the transforms never fight. */
+.runner-obstacle,
+.runner-pickup {
   position: absolute;
-  display: grid;
-  gap: 3px;
   will-change: transform;
 }
-.runner-obstacle > div {
+.runner-cells {
+  display: grid;
+  gap: 3px;
+}
+.runner-cells > div {
   width: 20px;
   height: 20px;
   border-radius: 5px;
+}
+/* Flyers: circle cells + a gentle bob read as "airborne". */
+.runner-cells.runner-hover > div {
+  border-radius: 9999px;
+}
+.runner-hover {
+  animation: runner-hover 1s ease-in-out infinite;
+}
+@keyframes runner-hover {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+/* A shielded hit pops the obstacle instead of the cat. */
+.runner-pop {
+  animation: runner-pop 0.18s ease-in forwards;
+}
+@keyframes runner-pop {
+  to {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+}
+/* ...and the cat blinks through the grace period. */
+.runner-hit {
+  animation: runner-blink 0.8s ease-in-out;
+}
+@keyframes runner-blink {
+  0%,
+  50%,
+  100% {
+    opacity: 1;
+  }
+  25%,
+  75% {
+    opacity: 0.3;
+  }
+}
+/* Reward text that drifts up from a grabbed pickup. */
+.runner-float {
+  position: absolute;
+  pointer-events: none;
+  font-size: 12px;
+  font-weight: 600;
+  animation: runner-float 0.8s ease-out forwards;
+}
+@keyframes runner-float {
+  to {
+    transform: translateY(-26px);
+    opacity: 0;
+  }
+}
+/* The +50 treat chip borrows the mascot's lavender. */
+.runner-treat {
+  background: #dccbea;
+  color: #7d5878;
 }
 
 /* Cat Run: runner poses. Physics moves the outer node; the pose layer only

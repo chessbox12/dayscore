@@ -1,8 +1,12 @@
 /**
  * Cat Run — an endless-runner easter egg behind the mascot. Same rules as the
  * classic browser dinosaur game (jump the obstacles, duck the flyers, speed
- * creeps up, one hit ends it) but drawn entirely in DayScore's own language:
- * the runner is the CatAvatar and obstacles are heatmap day-squares.
+ * creeps up, one hit ends it) plus power-ups, all drawn in DayScore's own
+ * language: the runner is the CatAvatar, ground obstacles are heatmap
+ * day-squares, flyers are bobbing circle-cells, and pickups are little chips.
+ *
+ * Power-ups: shield (absorbs one hit — the obstacle pops instead of you),
+ * ×2 (doubles points for a stretch), +50 (instant bonus).
  *
  * The loop mutates DOM nodes through refs at 60fps; React state only changes
  * on phase transitions (ready → running → over), never per frame.
@@ -25,18 +29,28 @@ const FAST_FALL = 1400; // extra px/s when ducking mid-air
 const SPEED_0 = 340; // px/s
 const SPEED_MAX = 720;
 const SPEED_RAMP = 9; // px/s gained per second
-const FLYER_AFTER = 22; // seconds before duck-under obstacles appear
-// Bottom offset that clears a ducked cat (box top ≈ 18px) but hits a standing
-// one (box top ≈ 33px) — keep between the two or ducking becomes pointless.
-const FLYER_Y = 24;
+const FLYER_AFTER = 8; // seconds before flyers join the rotation
+// Flyer heights. 24 sits between the ducked hitbox top (≈18px) and the
+// standing one (≈33px): duck or jump. 46 clears a standing cat — a fake-out
+// you can simply run under.
+const FLYER_YS = [24, 24, 46];
+const BOOST_SECS = 8; // ×2 duration
+const INVULN_SECS = 0.9; // grace period after a shielded hit
+const TREAT_POINTS = 50;
+const PICKUP_YS = [10, 55, 95]; // ground grab, low jump, high jump
 const HI_KEY = "dayscore:runner:hi";
 
-interface Obstacle {
+interface Sprite {
   el: HTMLDivElement;
   x: number;
   y: number; // bottom offset from ground
   w: number;
   h: number;
+}
+
+type PickupKind = "shield" | "boost" | "treat";
+interface Pickup extends Sprite {
+  kind: PickupKind;
 }
 
 const pad5 = (n: number) => String(Math.min(n, 99999)).padStart(5, "0");
@@ -62,8 +76,10 @@ export function CatRunner({ onClose }: { onClose: () => void }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const catRef = useRef<HTMLDivElement>(null);
   const catPoseRef = useRef<HTMLDivElement>(null);
+  const ringRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLDivElement>(null);
   const scoreRef = useRef<HTMLSpanElement>(null);
+  const boostRef = useRef<HTMLSpanElement>(null);
   const [phase, setPhase] = useState<"ready" | "running" | "over">("ready");
   const [finalScore, setFinalScore] = useState(0);
   const [hi, setHi] = useState(loadHi);
@@ -74,8 +90,10 @@ export function CatRunner({ onClose }: { onClose: () => void }) {
     const stage = stageRef.current!;
     const cat = catRef.current!;
     const pose = catPoseRef.current!;
+    const ring = ringRef.current!;
     const field = fieldRef.current!;
     const scoreEl = scoreRef.current!;
+    const boostEl = boostRef.current!;
     const stageW = () => stage.clientWidth;
 
     let raf = 0;
@@ -88,7 +106,14 @@ export function CatRunner({ onClose }: { onClose: () => void }) {
     let speed = SPEED_0;
     let distance = 0;
     let elapsed = 0;
-    let obstacles: Obstacle[] = [];
+    let points = 0;
+    let shield = false;
+    let boostUntil = 0;
+    let invulnUntil = 0;
+    let nextSpawnAt = 0; // distance at which the next obstacle appears
+    let nextPickupAt = 0; // elapsed seconds for the next power-up
+    let obstacles: Sprite[] = [];
+    let pickups: Pickup[] = [];
 
     const setPose = () => {
       pose.classList.toggle("runner-duck", ducking && y === 0);
@@ -96,23 +121,41 @@ export function CatRunner({ onClose }: { onClose: () => void }) {
       pose.classList.toggle("runner-run", running && y === 0 && !ducking);
     };
 
+    const setShield = (on: boolean) => {
+      shield = on;
+      ring.classList.toggle("opacity-100", on);
+      ring.classList.toggle("opacity-0", !on);
+    };
+
+    const setBoostHud = (on: boolean) => {
+      boostEl.classList.toggle("hidden", !on);
+    };
+
     const reset = () => {
       for (const o of obstacles) o.el.remove();
+      for (const p of pickups) p.el.remove();
       obstacles = [];
+      pickups = [];
       y = 0;
       vy = 0;
       ducking = false;
       speed = SPEED_0;
       distance = 0;
       elapsed = 0;
+      points = 0;
+      boostUntil = 0;
+      invulnUntil = 0;
       over = false;
+      setShield(false);
+      setBoostHud(false);
+      cat.classList.remove("runner-hit");
       cat.style.transform = "translateY(0)";
       scoreEl.textContent = pad5(0);
       setPose();
     };
 
-    const spawn = () => {
-      const flyer = elapsed > FLYER_AFTER && Math.random() < 0.28;
+    const spawnObstacle = (forceFlyer = false) => {
+      const flyer = forceFlyer || (elapsed > FLYER_AFTER && Math.random() < 0.3);
       const cols = flyer ? (Math.random() < 0.5 ? 1 : 2) : Math.random() < 0.6 ? 1 : 2;
       const rows = flyer ? 1 : 1 + Math.floor(Math.random() * 3);
       const w = cols * CELL + (cols - 1) * CELL_GAP;
@@ -120,34 +163,104 @@ export function CatRunner({ onClose }: { onClose: () => void }) {
       const el = document.createElement("div");
       el.className = "runner-obstacle";
       el.style.width = `${w}px`;
-      el.style.gridTemplateColumns = `repeat(${cols}, ${CELL}px)`;
+      const inner = document.createElement("div");
+      inner.className = flyer ? "runner-cells runner-hover" : "runner-cells";
+      inner.style.gridTemplateColumns = `repeat(${cols}, ${CELL}px)`;
       for (let i = 0; i < cols * rows; i++) {
         const cell = document.createElement("div");
-        cell.style.background = `var(--score-${6 + Math.floor(Math.random() * 5)})`;
-        el.appendChild(cell);
+        // Ground stacks use the deep end of the ramp; flyers the light end.
+        cell.style.background = flyer
+          ? `var(--score-${2 + Math.floor(Math.random() * 3)})`
+          : `var(--score-${6 + Math.floor(Math.random() * 5)})`;
+        inner.appendChild(cell);
       }
-      const o: Obstacle = { el, x: stageW() + w, y: flyer ? FLYER_Y : 0, w, h };
+      el.appendChild(inner);
+      const o: Sprite = {
+        el,
+        x: stageW() + w,
+        y: flyer ? FLYER_YS[Math.floor(Math.random() * FLYER_YS.length)] : 0,
+        w,
+        h,
+      };
       el.style.bottom = `${GROUND_PAD + o.y}px`;
       field.appendChild(el);
       obstacles.push(o);
     };
 
-    const gapUntilNext = () => 190 + Math.random() * 320 + speed * 0.35;
-    let nextSpawnAt = 0; // distance at which the next obstacle appears
+    const spawnPickup = (forced?: PickupKind) => {
+      const roll = Math.random();
+      const kind: PickupKind = forced ?? (roll < 0.35 ? "shield" : roll < 0.7 ? "boost" : "treat");
+      const el = document.createElement("div");
+      el.className = "runner-pickup";
+      const inner = document.createElement("span");
+      inner.className = "runner-hover inline-flex items-center justify-center";
+      if (kind === "shield") {
+        inner.innerHTML = `<span class="block w-[22px] h-[22px] rounded-full border-[3px] border-accent bg-accent-soft"></span>`;
+      } else {
+        inner.innerHTML = `<span class="inline-flex items-center rounded-md px-1.5 h-[20px] text-[11px] font-bold ${
+          kind === "boost" ? "bg-accent text-accent-ink" : "runner-treat"
+        }">${kind === "boost" ? "×2" : `+${TREAT_POINTS}`}</span>`;
+      }
+      el.appendChild(inner);
+      const w = kind === "shield" ? 22 : 34;
+      const p: Pickup = {
+        el,
+        kind,
+        x: stageW() + w,
+        y: PICKUP_YS[Math.floor(Math.random() * PICKUP_YS.length)],
+        w,
+        h: 22,
+      };
+      el.style.bottom = `${GROUND_PAD + p.y}px`;
+      field.appendChild(el);
+      pickups.push(p);
+    };
 
-    const collide = (o: Obstacle) => {
+    const floatText = (text: string, x: number, yBottom: number) => {
+      const el = document.createElement("span");
+      el.className = "runner-float text-accent";
+      el.textContent = text;
+      el.style.left = `${x}px`;
+      el.style.bottom = `${GROUND_PAD + yBottom}px`;
+      field.appendChild(el);
+      window.setTimeout(() => el.remove(), 800);
+    };
+
+    const gapUntilNext = () => 190 + Math.random() * 320 + speed * 0.35;
+
+    const catBox = () => {
       const catH = ducking && y === 0 ? CAT_BOX.duckH : CAT_BOX.h;
-      const cx = CAT_X + (CAT_SIZE - CAT_BOX.w) / 2 + CAT_BOX.inset;
-      const cw = CAT_BOX.w - CAT_BOX.inset * 2;
-      const cy = y + CAT_BOX.inset; // bottom
-      const ch = catH - CAT_BOX.inset * 2;
-      return cx < o.x + o.w && cx + cw > o.x && cy < o.y + o.h && cy + ch > o.y;
+      return {
+        x: CAT_X + (CAT_SIZE - CAT_BOX.w) / 2 + CAT_BOX.inset,
+        w: CAT_BOX.w - CAT_BOX.inset * 2,
+        y: y + CAT_BOX.inset, // bottom
+        h: catH - CAT_BOX.inset * 2,
+      };
+    };
+
+    const hits = (s: Sprite) => {
+      const c = catBox();
+      return c.x < s.x + s.w && c.x + c.w > s.x && c.y < s.y + s.h && c.y + c.h > s.y;
+    };
+
+    const applyPickup = (p: Pickup) => {
+      if (p.kind === "shield") {
+        setShield(true);
+      } else if (p.kind === "boost") {
+        boostUntil = elapsed + BOOST_SECS;
+        setBoostHud(true);
+        floatText("×2", p.x, p.y + p.h);
+      } else {
+        points += TREAT_POINTS;
+        floatText(`+${TREAT_POINTS}`, p.x, p.y + p.h);
+      }
+      if (p.kind === "shield") floatText("shield", p.x, p.y + p.h);
     };
 
     const gameOver = () => {
       running = false;
       over = true;
-      const score = Math.floor(distance / 12);
+      const score = Math.floor(points);
       setFinalScore(score);
       setHi((prev) => {
         const next = Math.max(prev, score);
@@ -163,10 +276,19 @@ export function CatRunner({ onClose }: { onClose: () => void }) {
       const dt = Math.min((t - last) / 1000, 0.05); // clamp tab-switch jumps
       last = t;
       if (!running) return;
+      advance(dt);
+    };
 
+    // One simulation step. Shared by the rAF tick and the dev-only warp hook.
+    const advance = (dt: number) => {
       elapsed += dt;
       speed = Math.min(SPEED_MAX, speed + SPEED_RAMP * dt);
       distance += speed * dt;
+      points += ((speed * dt) / 12) * (elapsed < boostUntil ? 2 : 1);
+      if (boostUntil !== 0 && elapsed >= boostUntil) {
+        boostUntil = 0;
+        setBoostHud(false);
+      }
 
       // Cat physics.
       if (y > 0 || vy > 0) {
@@ -177,11 +299,34 @@ export function CatRunner({ onClose }: { onClose: () => void }) {
       }
       setPose();
 
-      // Obstacles.
+      // Spawns.
       if (distance >= nextSpawnAt) {
-        spawn();
+        spawnObstacle();
         nextSpawnAt = distance + gapUntilNext();
       }
+      if (elapsed >= nextPickupAt) {
+        spawnPickup();
+        nextPickupAt = elapsed + 7 + Math.random() * 6;
+      }
+
+      // Pickups drift with the world and pop on grab.
+      for (let i = pickups.length - 1; i >= 0; i--) {
+        const p = pickups[i];
+        p.x -= speed * dt;
+        if (p.x + p.w < 0) {
+          p.el.remove();
+          pickups.splice(i, 1);
+          continue;
+        }
+        p.el.style.transform = `translateX(${p.x}px)`;
+        if (hits(p)) {
+          applyPickup(p);
+          p.el.remove();
+          pickups.splice(i, 1);
+        }
+      }
+
+      // Obstacles.
       for (let i = obstacles.length - 1; i >= 0; i--) {
         const o = obstacles[i];
         o.x -= speed * dt;
@@ -191,29 +336,40 @@ export function CatRunner({ onClose }: { onClose: () => void }) {
           continue;
         }
         o.el.style.transform = `translateX(${o.x}px)`;
-        if (collide(o)) {
+        if (hits(o) && elapsed >= invulnUntil) {
+          if (shield) {
+            // The shield takes the hit: obstacle pops, brief grace period.
+            setShield(false);
+            invulnUntil = elapsed + INVULN_SECS;
+            const inner = o.el.firstElementChild;
+            if (inner) inner.classList.add("runner-pop");
+            const doomed = o.el;
+            window.setTimeout(() => doomed.remove(), 200);
+            obstacles.splice(i, 1);
+            cat.classList.remove("runner-hit");
+            void cat.offsetWidth; // restart the blink animation
+            cat.classList.add("runner-hit");
+            continue;
+          }
           gameOver();
           return;
         }
       }
 
-      scoreEl.textContent = pad5(Math.floor(distance / 12));
+      scoreEl.textContent = pad5(Math.floor(points));
     };
 
     const start = () => {
       reset();
       nextSpawnAt = 260; // a beat of runway before the first obstacle
+      nextPickupAt = 4 + Math.random() * 4;
       running = true;
       setPose();
       setPhase("running");
     };
 
     const jump = () => {
-      if (over) {
-        start();
-        return;
-      }
-      if (!running) {
+      if (over || !running) {
         start();
         return;
       }
@@ -257,11 +413,27 @@ export function CatRunner({ onClose }: { onClose: () => void }) {
       raf = requestAnimationFrame(tick);
     });
 
+    // Dev-only hooks so the pieces can be exercised deterministically.
+    const w = window as unknown as { __catrun?: unknown };
+    if (import.meta.env.DEV) {
+      w.__catrun = {
+        pickup: spawnPickup,
+        flyer: () => spawnObstacle(true),
+        start,
+        // Advance the simulation without waiting on rAF (headless testing).
+        warp: (secs: number) => {
+          const step = 1 / 60;
+          for (let s = 0; s < secs && running; s += step) advance(step);
+        },
+      };
+    }
+
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       stage.removeEventListener("pointerdown", onPointer);
+      if (import.meta.env.DEV) delete w.__catrun;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -292,13 +464,17 @@ export function CatRunner({ onClose }: { onClose: () => void }) {
           className="relative overflow-hidden rounded-2xl border border-line bg-surface outline-none select-none touch-none cursor-pointer"
           style={{ height: STAGE_H }}
         >
-          <span
-            ref={scoreRef}
-            className="absolute top-3 right-4 text-[13px] font-medium tabular-nums text-ink-3"
-            aria-hidden="true"
-          >
-            00000
-          </span>
+          <div className="absolute top-3 right-4 flex items-center gap-2" aria-hidden="true">
+            <span
+              ref={boostRef}
+              className="hidden rounded-md bg-accent text-accent-ink px-1.5 py-0.5 text-[11px] font-bold"
+            >
+              ×2
+            </span>
+            <span ref={scoreRef} className="text-[13px] font-medium tabular-nums text-ink-3">
+              00000
+            </span>
+          </div>
           <span className="absolute top-3 left-4 text-[13px] font-medium tabular-nums text-ink-3" aria-hidden="true">
             HI {pad5(hi)}
           </span>
@@ -306,7 +482,7 @@ export function CatRunner({ onClose }: { onClose: () => void }) {
           {/* Ground */}
           <div className="absolute left-0 right-0 border-t border-line" style={{ bottom: GROUND_PAD }} />
 
-          {/* Obstacle layer */}
+          {/* Obstacle + pickup layer */}
           <div ref={fieldRef} className="absolute inset-0" aria-hidden="true" />
 
           {/* The runner */}
@@ -315,6 +491,11 @@ export function CatRunner({ onClose }: { onClose: () => void }) {
             className="absolute will-change-transform"
             style={{ left: CAT_X, bottom: GROUND_PAD - 6, width: CAT_SIZE, height: CAT_SIZE }}
           >
+            <div
+              ref={ringRef}
+              aria-hidden="true"
+              className="absolute -inset-1.5 rounded-full border-2 border-accent bg-accent-soft/40 opacity-0 transition-opacity duration-200"
+            />
             <div ref={catPoseRef} className="runner-pose">
               <CatAvatar size={CAT_SIZE} />
             </div>
@@ -330,7 +511,7 @@ export function CatRunner({ onClose }: { onClose: () => void }) {
               <p className="text-[13px] text-ink-3">
                 {phase === "ready" ? "Tap or press space to run" : "Tap or press space to run it back"}
               </p>
-              <p className="text-[12px] text-ink-3">↑ jump · ↓ duck</p>
+              <p className="text-[12px] text-ink-3">↑ jump · ↓ duck · grab the power-ups</p>
             </div>
           )}
         </div>
