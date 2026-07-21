@@ -461,7 +461,7 @@ export function CatRunner({ onClose }: { onClose: () => void }) {
         <div
           ref={stageRef}
           tabIndex={-1}
-          className="relative overflow-hidden rounded-2xl border border-line bg-surface outline-none select-none touch-none cursor-pointer"
+          className="runner-stage relative overflow-hidden rounded-2xl border border-line bg-surface select-none touch-none cursor-pointer"
           style={{ height: STAGE_H }}
         >
           <div className="absolute top-3 right-4 flex items-center gap-2" aria-hidden="true">

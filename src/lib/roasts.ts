@@ -1,11 +1,16 @@
 /**
- * The roast shown after rating a day. One style: mean-ish internet heckler
- * with ragebait energy — every line talks back to the number itself.
+ * The quote shown after rating a day. One voice: a supportive friend who is
+ * slightly annoying — teasing, deadpan, a bit dramatic, but unmistakably on
+ * your side. Bad days get absurdist comfort (the bar is on the floor, the day
+ * is the villain, never you); good days get full hype-friend energy.
+ * Built from research into how people actually cheer each other up online —
+ * deadpan affirmation-parody, "you dropped this 👑", low-bar mantras, LET'S GO
+ * — and deliberately avoids the greeting-card canon ("look on the bright
+ * side", "it could be worse", "good vibes only").
+ *
  * Picked deterministically from (date, score) so an entry keeps its quote;
  * `spin` cycles through the pool when the user asks for a fresh one.
- *
- * Content rule: roast the day and the rating, tease the user — never their
- * worth, health, identity or anything a genuinely bad day could make cruel.
+ * Every line talks back to the number itself.
  */
 import { ISODate } from "./dates";
 
@@ -25,46 +30,43 @@ const r = (text: (score: number) => string, min?: number, max?: number): Roast =
 const A = (s: number) => (s === 8 ? "An" : "A");
 
 const LOW: Roast[] = [
-  r((s) => `A ${s}? Congrats on losing to a random weekday.`),
-  r((s) => `${s}/10. The day won, and it wasn't even trying.`),
-  r((s) => `A ${s}, and you still logged it. Brave. Pointless, but brave.`),
-  r((s) => `${s} out of 10 — the heatmap needed a stain anyway.`),
-  r((s) => `A ${s}? Rate it lower. Do it. Coward.`),
-  r((s) => `${s}/10. This could've been an email.`),
-  r((s) => `A ${s}. Somewhere a better version of today is laughing at this one.`),
-  r((s) => `${s}/10. The vibes filed for bankruptcy and you co-signed.`),
-  r((s) => `A ${s}. Today gets a participation trophy. A damp one.`),
-  r((s) => `${s}/10, and tomorrow you get to try again. Same odds.`),
-  r(() => `A 1. The scale doesn't go lower, and that's the only reason.`, 1, 1),
-  r(() => `A 2 is just a 1 with delusions of grandeur.`, 2, 2),
-  r(() => `A 3? That's a 1 rounded up out of pity.`, 3, 3),
-  r(() => `A 4 — couldn't even commit to being mediocre.`, 4, 4),
+  r((s) => `A ${s}? Okay. Deep breath. We do not let a random Tuesday win the rematch.`),
+  r((s) => `${s}/10. The bar for tomorrow is on the floor. Trip over it. Still counts.`),
+  r((s) => `A ${s}. I'm fighting today in the parking lot. Nobody does this to my friend.`),
+  r((s) => `A ${s}? Hey, you dropped this 👑. The day's behaviour was not your fault.`),
+  r((s) => `${s}/10. Repeat after me: I am epic. I have friends. Tomorrow fears me.`),
+  r((s) => `A ${s}. Evict today from your head. You're the landlord. It never paid rent.`),
+  r((s) => `${s}/10, survived entirely out of spite. Honestly? Iconic.`),
+  r((s) => `A ${s} logged is a day survived. Hydrate and be dramatic about it. You earned it.`),
+  r((s) => `${s}/10. New plan: snack, blanket, unearned confidence. No questions at this time.`),
+  r((s) => `A ${s}. Tomorrow has no idea who it's dealing with. (You. Rested. Petty.)`),
+  r(() => `A 1?! Blanket. Snack. We never speak of this day again. I've got the door.`, 1, 1),
+  r(() => `A 2. The bar was in hell and the day still tripped. The day. Not you.`, 2, 2),
+  r(() => `A 3. Say it with me: not my fault, not my vibe, not happening twice.`, 3, 3),
+  r(() => `A 4 is a 5 that needs a nap. Go acquire the nap.`, 4, 4),
 ];
 
 const NEUTRAL: Roast[] = [
-  r((s) => `A ${s}. Aggressively forgettable. Iconic behaviour.`),
-  r((s) => `${s}/10 — the beige of numbers for the beige of days.`),
-  r((s) => `A ${s}? You compressed 24 whole hours into a shrug.`),
-  r((s) => `${s}/10. Nothing happened today and you know it.`),
-  r((s) => `A ${s}. Not bad enough to be a story, not good enough to matter.`),
-  r((s) => `${s} out of 10. You'll forget this day by Thursday. So will the day.`),
-  r((s) => `A ${s}. A day that will never be made into a movie.`),
-  r((s) => `${s}/10. Riveting stuff. Truly.`),
-  r(() => `A 5 is a day doing the bare minimum. Like recognises like.`, 5, 5),
-  r(() => `A 6 is a 5 with better marketing.`, 6, 6),
-  r(() => `You typed 7, but we both know it was a 6.`, 7, 7),
+  r((s) => `A ${s}. Perfectly mid. The fridge light of days. Log it proudly anyway.`),
+  r((s) => `${s}/10. Nothing happened today. Rest is a plot point too, you know.`),
+  r((s) => `A ${s}. Beige, sure — but beige is a load-bearing colour. Ask any wall.`),
+  r((s) => `${s}/10. Coasting is a skill. You're basically an athlete of fine.`),
+  r((s) => `A ${s} still feeds the streak, and the streak is the real flex.`),
+  r((s) => `${s}/10. The day said "present" and sat down. Honestly? Respect.`),
+  r(() => `A 5. Dead centre. Statistically immaculate. Frame it.`, 5, 5),
+  r(() => `A 6 is a 5 that tried. I saw it trying. So proud.`, 6, 6),
+  r(() => `A 7 is a good day acting humble. Own it a little.`, 7, 7),
 ];
 
 const POSITIVE: Roast[] = [
-  r((s) => `${A(s)} ${s}? In this economy?`),
-  r((s) => `${s}/10. Screenshot it — it's never happening again.`),
-  r((s) => `${A(s)} ${s}. Unbearable. Thrilled for you, though. (No.)`),
-  r((s) => `Some of us had a normal day, but sure, flaunt your ${s}.`),
-  r((s) => `${A(s)} ${s}? The heatmap will humble you by Friday.`),
-  r((s) => `${A(s)} ${s}. Don't get used to it.`),
-  r((s) => `${A(s)} ${s}. The universe played favourites and you're bragging about it.`),
-  r(() => `A 9? What was missing? Say it. You can't.`, 9, 9),
-  r(() => `A 10. Sure. Nobody's day is a 10, but sure.`, 10, 10),
+  r((s) => `${A(s)} ${s}?? LET'S GO. Don't explain it. Don't jinx it. Just nod.`),
+  r((s) => `${A(s)} ${s}. Write down whatever you did today — that's the recipe now.`),
+  r((s) => `${A(s)} ${s}. The heatmap's about to look like open ocean. Keep pouring.`),
+  r((s) => `${A(s)} ${s}, and the crown stays on. You dropped nothing today, king.`),
+  r((s) => `${s}/10?! I'm telling everyone. You can't stop me. This is my news now.`),
+  r((s) => `${A(s)} ${s}. Same again tomorrow? The day knows the address now.`),
+  r(() => `A 9? Saving the last point for tomorrow. Cocky. I respect it.`, 9, 9),
+  r(() => `A 10. A TEN. I need you to be normal about this exactly never.`, 10, 10),
 ];
 
 export function tierForScore(score: number): "low" | "neutral" | "positive" {

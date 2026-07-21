@@ -208,3 +208,9 @@ html.ext body {
   width: 400px;
   min-height: 540px;
 }
+
+/* The game stage is focused programmatically (tabIndex=-1, all input is via
+   keys/taps) — the global :focus-visible ring only adds noise there. */
+.runner-stage:focus-visible {
+  outline: none;
+}

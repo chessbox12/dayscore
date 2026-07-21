@@ -28,8 +28,8 @@ describe("roasts", () => {
     let d = "2026-01-01";
     for (let i = 0; i < 120; i++) {
       const q8 = roastFor(d, 8);
-      eq(`no 10-only line for an 8 (${d})`, q8.includes("Nobody's day is a 10"), false);
-      eq(`no 9-only line for an 8 (${d})`, q8.includes("What was missing"), false);
+      eq(`no 10-only line for an 8 (${d})`, q8.includes("be normal about this"), false);
+      eq(`no 9-only line for an 8 (${d})`, q8.includes("Saving the last point"), false);
       d = addDays(d, 1);
     }
   });
